@@ -1,25 +1,12 @@
 require 'pp'
-require 'json'
 
 class Node
   attr_reader :failure, :length, :type, :value, :children
-  attr_writer :print_depth
   def initialize(failure:false, length:0, type:nil, value:'', children:[])
     @failure, @length, @type, @value, @children = failure, length, type, value, children
   end
   def to_s
-    #return PP.pp to_hash, ""
-    if @failure
-      "<Failure>"
-    else
-      "#{''.rjust (@print_depth||0)}<#{@type} length=#{@length}" <<
-      (@value != '' ? " value=`#{@value}`" : '') <<
-      (@children.length > 0 ? 
-       (">\n" << (@children.map do |node|
-        node.print_depth = (@print_depth||0) + 6
-        node.to_s
-      end).join("\n") << "\n#{''.rjust (@print_depth||0)}</#{@type}>") : " />")
-    end
+    return PP.pp to_hash, ""
   end
   def to_hash
     if @failure
@@ -29,9 +16,6 @@ class Node
     else
       {:type=>@type, :length=>@length, :value=>@value, :children=> @children.map {|n|n.to_hash} }
     end
-  end
-  def to_json
-    JSON.pretty_generate to_hash
   end
 end
 
@@ -188,6 +172,7 @@ class GrammarParser < Parser
   end
   def root_rule(name)
     @root = name
+    self
   end
   def parse(input)
     raise 'must call `root_rule` first' unless @root
@@ -199,29 +184,43 @@ class GrammarParser < Parser
 end
 
 class BnfParser
+  attr_reader :ast
   def initialize
     @parser = GrammarParser.new {
+      ## root: *(ws assignment ws).
       rule(:root) { rule(:ws).and(rule(:assignment)).and(rule(:ws)).star.and(eof) }
+      ## assignment: identifier ws ":" ws expression ?block "." .
       rule(:assignment) { rule(:identifier).and(rule(:ws)).and(text(':').and(rule(:ws))).and(rule(:expression)).and(rule(:block).maybe).and(text('.')) }
+      ## identifier : +'-ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890'.
       rule(:identifier) { char('-ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890').plus }
+      ## ws : *' \t\r\n'.
       rule(:ws) { char(" \t\r\n").star }
+      ## expression: +term.
       rule(:expression) { rule(:term).plus }
+      ## block: ?("{\n" >"\n}" "\n}" ws).
       rule(:block) { text("{\n").and(til("\n}")).and(text("\n}")).and(rule(:ws)).maybe }
+      ## term : factor ?"!" ws.
       rule(:term) { rule(:factor).and(text('!').maybe).and(rule(:ws)) }
-      rule(:factor) { char('*+?').maybe.and(rule(:identifier).or(rule(:string)).or(rule(:chars)).or(rule(:text_until)).or(rule(:all_of)).or(rule(:one_of))) }
+      ## factor: ?'*+?' [identifier string chars until seq any].
+      rule(:factor) { char('*+?').maybe.and(rule(:identifier).or(rule(:string)).or(rule(:chars)).or(rule(:until)).or(rule(:seq)).or(rule(:any))) }
+      ## string: '"' >'"' '"'.
       rule(:string) { text('"').and(til('"')).and(text('"')) }
+      ## chars : "'" >"'" "'".
       rule(:chars) { text("'").and(til("'")).and(text("'")) }
-      rule(:text_until) { text(">").and(rule(:string).or(rule(:chars))) }
-      rule(:all_of) { text("(").and(rule(:ws)).and(rule(:expression)).and(text(")")) }
-      rule(:one_of) { text("[").and(rule(:ws)).and(rule(:expression)).and(text("]")) }
+      ## until:">"[string chars].
+      rule(:until) { text(">").and(rule(:string).or(rule(:chars))) }
+      ## seq: "(" ws expression ")".
+      rule(:seq) { text("(").and(rule(:ws)).and(rule(:expression)).and(text(")")) }
+      ## any: "[" ws expression "]".
+      rule(:any) { text("[").and(rule(:ws)).and(rule(:expression)).and(text("]")) }
     }
+    self
   end
-  def parse_rule(rule_name, input)
-    @parser.parse_rule rule_name, input
+  def parse(grammar)
+    @ast = @parser.root_rule(:root).parse(grammar)
+    self
   end
-  def parse(input)
-    @parser.root_rule(:root)
-    @parser.parse(input)
+  def eval(input)
   end
 end
 
@@ -379,27 +378,20 @@ end
 
 def test_bnf_grammar
   parser = BnfParser.new
-  raise 'wrong type :string' unless parser.parse_rule(:string, '"abc"').type  == :string
-  raise 'wrong type :chars' unless parser.parse_rule(:chars, "'abc'").type  == :chars
-  raise 'wrong type :text_until' unless parser.parse_rule(:text_until, ">'abc'").type  == :text_until
-  raise 'wrong type :text_until' unless parser.parse_rule(:text_until, '>"abc"').type  == :text_until
-  raise 'not valid :text_until' unless parser.parse_rule(:text_until, '>abc').failure
-
-  raise 'should accept' if parser.parse_rule(:root, 'jojoeyey:?blah    +>"blah"  . lksjfalsdkf:+\'j\'.joey:was *here.').failure
-  raise 'should accept' if parser.parse_rule(:root, 'rule:("rule" rule).').failure
-  raise 'should accept' if parser.parse_rule(:root, '  rule: ("rule" ["a" "b" "c"]).').failure
-  raise 'should accept' if parser.parse_rule(:root, 'jojoeyey :?blah +>"blah".lksjfalsdkf :+\'j\'.joey   :    was *here .   ').failure
-  raise 'should accept' if parser.parse_rule(:root, 'jojoeyey :?blah +>"blah"   .   lksjfalsdkf :+\'j\'.joey   :    was *here .   ').failure
-  raise 'should accept' if parser.parse_rule(:root, 'rule  :("rule" rule).').failure
-  raise 'should accept' if parser.parse_rule(:root, 'rule:("rule"["a""b""c"]).').failure
-  raise 'should accept' if parser.parse_rule(:root, 'rule: ("rule" ["a" "b" "c"]).').failure
-  raise 'should accept' if parser.parse_rule(:root, 'rule1:"rule1".rule2:"rule2".').failure
-  raise 'should accept' if parser.parse_rule(:root, 'rule:("rule" ["a" "b" "c"]). rule2:("rule"["a" "b" "c"]).').failure
-  raise 'should accept' if parser.parse_rule(:root, 'rule:("rule" ["a" "b" "c"])    . rule2:("rule"["a""b""c"]).').failure
-  raise 'should accept' if parser.parse_rule(:root, ' rule : ( "rule" [ "a" "b" "c" ] ) .rule2:("rule"["a" "b" "c"]).').failure
-  raise 'should accept' if parser.parse_rule(:root, "a:'a'{\n code block \n} .").failure
-
-  puts parser.parse('Joey: "joey"! ?("was" "here").')
+  raise 'should accept' if parser.parse('jojoeyey:?blah    +>"blah"  . lksjfalsdkf:+\'j\'.joey:was *here.').ast.failure
+  raise 'should accept' if parser.parse('rule:("rule" rule).').ast.failure
+  raise 'should accept' if parser.parse('  rule: ("rule" ["a" "b" "c"]).').ast.failure
+  raise 'should accept' if parser.parse('jojoeyey :?blah +>"blah".lksjfalsdkf :+\'j\'.joey   :    was *here .   ').ast.failure
+  raise 'should accept' if parser.parse('jojoeyey :?blah +>"blah"   .   lksjfalsdkf :+\'j\'.joey   :    was *here .   ').ast.failure
+  raise 'should accept' if parser.parse('rule  :("rule" rule).').ast.failure
+  raise 'should accept' if parser.parse('rule:("rule"["a""b""c"]).').ast.failure
+  raise 'should accept' if parser.parse('rule: ("rule" ["a" "b" "c"]).').ast.failure
+  raise 'should accept' if parser.parse('rule1:"rule1".rule2:"rule2".').ast.failure
+  raise 'should accept' if parser.parse('rule:("rule" ["a" "b" "c"]). rule2:("rule"["a" "b" "c"]).').ast.failure
+  raise 'should accept' if parser.parse('rule:("rule" ["a" "b" "c"])    . rule2:("rule"["a""b""c"]).').ast.failure
+  raise 'should accept' if parser.parse(' rule : ( "rule" [ "a" "b" "c" ] ) .rule2:("rule"["a" "b" "c"]).').ast.failure
+  raise 'should accept' if parser.parse("a:'a'{\n code block \n} .").ast.failure
+  raise 'should accept' if parser.parse('Joey: "joey"! ?("was" "here").').ast.type != :root
 end
 
 # $> ruby ./combinators.rb test
@@ -409,4 +401,11 @@ if self.to_s == 'main'
     self.send(name)  if test_fn
     puts "✓ #{name}" if test_fn
   end if ARGV.length == 1 and ARGV.first.match /^test_/
+
+  gflag = $*.index("-g")
+  unless gflag.nil?
+    grammar = File.read $*[gflag + 1]
+    input = $stdin.read
+    BnfParser.new.parse(grammar).eval(input)
+  end
 end
