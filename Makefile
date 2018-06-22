@@ -20,7 +20,7 @@ build:
 docs:
 	@echo "\033[92m"Installation"\033[0m"
 	@echo '```bash' > README.md
-	@echo "curl -O 'https://github.com/khtdr/.../dist/rubidu'" >> README.md
+	@echo "curl -O 'https://raw.githubusercontent.com/khtdr/rubidu/master/dist/rubidu'"
 	@echo "chmod +x ./rubidu" >> README.md
 	@echo "TEST=true ./rubidu && ./rubidu -h" >> README.md
 	@echo '```' >> README.md
