@@ -1,11 +1,27 @@
 all:
-	@echo "\033[92m"Self-describing BNF"\033[33m"
-	@grep -e "^\s*##" rubidu.rb | sed 's/ *## //' | sed "s/^[a-z ]*:/`printf "\033[31m"`&`printf "\033[33m"`/g"
+	make test
+	make grammar
+	make build
+
+grammar:
+	@echo "\033[92m"BNF Grammar"\033[33m"
+	@grep -e "^\s*##" lib/bnf_parser.rb | sed 's/ *## //' | sed "s/^[a-z ]*:/`printf "\033[31m"`&`printf "\033[33m"`/g"
 	@echo "\033[0m"
 
 test:
-	ruby rubidu.rb test_
+	@echo "\033[92m"BNF Test Suite"\033[33m"
+	@ruby test.rb
+
+build:
+	mkdir -p dist
+	echo "#!/usr/bin/env ruby" > dist/rubidu
+	grep 'defined?' cli.rb >> dist/rubidu
+	cat $(shell grep require_relative cli.rb | cut -d"'" -f2) >> dist/rubidu
+	sed '/require_relative/d' cli.rb >> dist/rubidu
+	chmod +x dist/rubidu
+
+clean:
+	rm -rf dist
 
 counter:
 	echo 'xxx' | ruby rubidu.rb -g x-counter.rbd
-
