@@ -1,7 +1,4 @@
-all:
-	make test
-	make grammar
-	make build
+all: test docs grammar build
 
 grammar:
 	@echo "\033[92m"BNF Grammar"\033[33m"

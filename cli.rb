@@ -1,3 +1,4 @@
+VERSION="1.0.1"
 TEST=ENV['TEST']||false unless defined? TEST
 
 require_relative './lib/node.rb'
@@ -17,7 +18,7 @@ end
 
 vflag = ! $*.index("-v").nil?
 hflag = ! $*.index("-h").nil?
-if vflag then puts "1.0.0" end
+if vflag then puts VERSION end
 if hflag then help end
 
 exit if vflag or hflag

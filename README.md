@@ -1,5 +1,5 @@
-```
+```bash
 curl -O 'https://github.com/khtdr/.../dist/rubidu'
 chmod +x ./rubidu
-./rubidu -h
+TEST=true ./rubidu && ./rubidu -h
 ```

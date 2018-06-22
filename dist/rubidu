@@ -483,6 +483,7 @@ if TEST
   raise 'should accept' if parser.parse('Joey: "joey"! ?("was" "here").').ast.type != :root
   #puts BnfParser.new.parse('Joey: "joey"! ?("was" "here").').build.eval("joey")
 end
+VERSION="1.0.1"
 TEST=ENV['TEST']||false unless defined? TEST
 
 
@@ -498,7 +499,7 @@ end
 
 vflag = ! $*.index("-v").nil?
 hflag = ! $*.index("-h").nil?
-if vflag then puts "1.0.0" end
+if vflag then puts VERSION end
 if hflag then help end
 
 exit if vflag or hflag
