@@ -26,4 +26,4 @@ unless gflag
 end
 grammar = File.read $*[gflag + 1]
 input = $stdin.read
-BnfParser.new.parse(grammar).eval(input)
+BnfParser.new.parse(grammar).build.eval(input)
