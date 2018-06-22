@@ -1,6 +1,5 @@
 #!/usr/bin/env ruby
 TEST=ENV['TEST']||false unless defined? TEST
-
 class Node
   attr_reader :failure, :length, :type, :value, :children
   def initialize(failure:false, length:0, type:nil, value:'', children:[], evaluator:nil)
@@ -13,6 +12,7 @@ class Node
     @children[0]
   end
   def to_s
+    require 'pp'
     return PP.pp to_hash, ""
   end
   def to_hash
@@ -481,16 +481,33 @@ if TEST
   raise 'should accept' if parser.parse(' rule : ( "rule" [ "a" "b" "c" ] ) .rule2:("rule"["a" "b" "c"]).').ast.failure
   raise 'should accept' if parser.parse("a:'a'{\n code block \n} .").ast.failure
   raise 'should accept' if parser.parse('Joey: "joey"! ?("was" "here").').ast.type != :root
-  puts BnfParser.new.parse('Joey: "joey"! ?("was" "here").').build.eval("joey")
+  #puts BnfParser.new.parse('Joey: "joey"! ?("was" "here").').build.eval("joey")
 end
 TEST=ENV['TEST']||false unless defined? TEST
 
 
-# $> ruby ./cli.rb
-gflag = $*.index("-g")
-unless gflag.nil?
-  grammar = File.read $*[gflag + 1]
-  input = $stdin.read
-  BnfParser.new.parse(grammar).eval(input)
+exit if TEST
+
+def help
+  puts "Usage: cat program.txt | #{$0} -g grammar_file.rbd"
+  puts "Options:"
+  puts "  -v Shows the version"
+  puts "  -h Shows this message"
+  puts "Testing: TEST=true ruby #{$0}"
 end
 
+vflag = ! $*.index("-v").nil?
+hflag = ! $*.index("-h").nil?
+if vflag then puts "1.0.0" end
+if hflag then help end
+
+exit if vflag or hflag
+
+gflag = ! $*.index("-g").nil?
+unless gflag
+  help
+  exit
+end
+grammar = File.read $*[gflag + 1]
+input = $stdin.read
+BnfParser.new.parse(grammar).build.eval(input)

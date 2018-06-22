@@ -107,5 +107,5 @@ if TEST
   raise 'should accept' if parser.parse(' rule : ( "rule" [ "a" "b" "c" ] ) .rule2:("rule"["a" "b" "c"]).').ast.failure
   raise 'should accept' if parser.parse("a:'a'{\n code block \n} .").ast.failure
   raise 'should accept' if parser.parse('Joey: "joey"! ?("was" "here").').ast.type != :root
-  puts BnfParser.new.parse('Joey: "joey"! ?("was" "here").').build.eval("joey")
+  #puts BnfParser.new.parse('Joey: "joey"! ?("was" "here").').build.eval("joey")
 end

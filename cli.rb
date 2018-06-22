@@ -5,11 +5,14 @@ require_relative './lib/parser.rb'
 require_relative './lib/grammar_parser.rb'
 require_relative './lib/bnf_parser.rb'
 
+exit if TEST
+
 def help
   puts "Usage: cat program.txt | #{$0} -g grammar_file.rbd"
   puts "Options:"
   puts "  -v Shows the version"
   puts "  -h Shows this message"
+  puts "Testing: TEST=true ruby #{$0}"
 end
 
 vflag = ! $*.index("-v").nil?
