@@ -1,9 +1,7 @@
-all: test docs grammar build
+all: test dist docs
 
 grammar:
-	@echo "\033[92m"BNF Grammar"\033[33m"
-	@grep -e "^\s*##" lib/bnf_parser.rb | sed 's/ *## //' | sed "s/^[a-z ]*:/`printf "\033[31m"`&`printf "\033[33m"`/g"
-	@echo "\033[0m"
+	@grep -e "^\s*##" lib/bnf_parser.rb | sed 's/ *## /    /'
 
 test:
 	@echo "\033[92m"BNF Test Suite"\033[33m"
@@ -17,14 +15,19 @@ build:
 	sed '/require_relative/d' cli.rb >> dist/rubidu
 	chmod +x dist/rubidu
 
+dist: build
+	dist/rubidu --test && dist/rubidu -h
+
 docs:
-	@echo "\033[92m"Installation"\033[0m"
-	@echo '```bash' > README.md
+	@echo "# " Installation > README.md
+	@echo '```bash' >> README.md
 	@echo "curl -O 'https://raw.githubusercontent.com/khtdr/rubidu/master/dist/rubidu'" >> README.md
 	@echo "chmod +x ./rubidu" >> README.md
-	@echo "TEST=true ./rubidu && ./rubidu -h" >> README.md
+	@echo "./rubidu --test && ./rubidu -h" >> README.md
 	@echo '```' >> README.md
-	@cat README.md
+	@echo "# " Self Describing Grammar >> README.md
+	@make grammar >> README.md
+	cat README.md
 
 clean:
 	rm -rf dist
